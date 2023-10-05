@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chat with Mom and Son</title>
+</head>
+<body>
+    <h1>Chat with Mom and Son</h1>
+    <label for="host">OpenAI Host:</label>
+    <input type="text" id="host" placeholder="Enter the OpenAI host URL"><br>
+
+    <label for="model">Model ID:</label>
+    <input type="text" id="model" placeholder="Enter the model ID"><br>
+
+    <label for="apiKey">OpenAI API Key:</label>
+    <input type="text" id="apiKey" placeholder="Enter your API key"><br>
+
+    <label for="topic">Chat Topic:</label>
+    <input type="text" id="topic" placeholder="Enter the chat topic"><br>
+
+    <button onclick="startChat()">Start Chat</button>
+    <button onclick="stopChat()">Stop Chat</button>
+
+    <div id="chatbox">
+        <div id="mom" class="chat"></div>
+        <div id="son" class="chat"></div>
+    </div>
+
+    <script>
+        let momChat = document.getElementById('mom');
+        let sonChat = document.getElementById('son');
+        let apiKeyInput = document.getElementById('apiKey');
+        let topicInput = document.getElementById('topic');
+        let stopButton = document.querySelector('button');
+        let momMessage = '';
+        let sonMessage = '';
+        let stopChatting = false;
+
+        function appendMessage(who, message) {
+            let chatDiv = document.createElement('div');
+            chatDiv.textContent = who + ': ' + message;
+            document.getElementById(who.toLowerCase()).appendChild(chatDiv);
+        }
+
+        async function startChat() {
+            momMessage = `For three years old Son. Son, I would like to chat ${topicInput.value}`;
+            sonMessage = `For three years old Son. Mom, I like the ${topicInput.value}`;
+            stopChatting = false;
+            momChat.innerHTML = '';
+            sonChat.innerHTML = '';
+
+            const apiKey = apiKeyInput.value;
+            const userHost = document.getElementById('host').value;
+            const userModel = document.getElementById('model').value;
+
+            const openAiHeaders = {
+                'Content-Type': 'application/json',
+                'api-key': apiKey
+            }
+
+            if (!apiKey || !userHost || !userModel || !topicInput.value) {
+                alert('Please enter your API key, host, model, and chat topic.');
+                return;
+            }
+
+            while (!stopChatting) {
+                await fetchMessage('Mom', openAiHeaders, userHost, userModel);
+                if (!stopChatting) {
+                    await fetchMessage('Son', openAiHeaders, userHost, userModel);
+                }
+            }
+        }
+
+        async function fetchMessage(who, openAiHeaders, userHost, userModel) {
+            const url = `${userHost}/openai/deployments/${userModel}/chat/completions?api-version=2023-05-15`;
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: openAiHeaders,
+                body: JSON.stringify({
+                    "messages": [
+                        {
+                            "role": 'user',
+                            "content": `${who === 'Mom' ? momMessage : sonMessage}`
+                        },
+                    ],,
+                    "temperature": 1,
+                    "max_tokens": 10,
+                    "temperature": 1,
+                    "frequency_penalty": 0,
+                    "presence_penalty": 0
+                })
+            })
+            .then((response) => response.json())
+            .then((data) => {
+                const message = data.choices[0].message.content;
+                if (who === 'Mom') {
+                    momMessage += message;
+                    appendMessage('Mom', message);
+                    sleep(500); // Add a delay before Son responds
+                    fetchMessage('Son', openAiHeaders, userHost, userModel);
+                } else {
+                    sonMessage += message;
+                    appendMessage('Son', message);
+                }
+            });
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        function stopChat() {
+            stopChatting = true;
+        }
+    </script>
+
+    <style>
+        .chat {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin: 10px;
+        }
+    </style>
+</body>
+</html>
