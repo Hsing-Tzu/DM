@@ -9,4 +9,4 @@
 
 ## > 作業連結區 :pencil:
 ###  - [作業1](https://youtu.be/4784aLv1KTA)
-###  - [作業2](https://github.com/Hsing-Tzu/DM/blob/main/Lab%202/index.html)
+###  - [作業2](https://github.com/Hsing-Tzu/DM/tree/main/Lab%202)
