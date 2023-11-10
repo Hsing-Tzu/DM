@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Hotel Recommendations</title>
+</head>
+
+<body>
+    <h1>Hotel Recommendations</h1>
+    <div>
+        <label for="userInput">請輸入旅館名稱：</label>
+        <input type="text" id="userInput">
+        <button onclick="executeCombinedSearch()">查詢推薦</button>
+    </div>
+    <div id="results"></div>
+
+    <script>
+        function executeCombinedSearch() {
+            const userInput = document.getElementById('userInput').value;
+
+            const searchServiceName = 'service name'; // Replace with your Azure Cognitive Search service name
+            const indexName = 'index name'; // Replace with your index name
+            const adminApiKey = 'admin API key'; // Replace with your admin API key
+            const openaiEndpoint = 'openaiEndpoint';
+
+            // Use OpenAI API to get the vector
+            fetch(openaiEndpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'api-key': 'OpenAI API key', // Replace with your OpenAI API key
+                },
+                body: JSON.stringify({
+                    input: userInput
+                })
+            })
+                .then(response => response.json())
+                .then(openaiData => {
+                    if (openaiData.object === 'list' && openaiData.data.length > 0) {
+                        const embedding = openaiData.data[0];
+                        if (embedding.object === 'embedding') {
+                            const vector = embedding.embedding;
+                            console.log(vector);
+                            // Execute Azure Cognitive Search query
+                            fetch(`https://${searchServiceName}.search.windows.net/indexes/${indexName}/docs/search?api-version=2023-07-01-Preview`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'api-key': adminApiKey,
+                                },
+                                body: JSON.stringify({
+                                    count: true,
+                                    select: 'HotelId, HotelName, Description, Category',
+                                    top: 5,
+                                    filter: `not (search.ismatch('${userInput}', 'HotelName') or search.ismatch('${userInput}', 'Description'))`,
+                                    vectors: [
+                                        {
+                                            value: vector, // Use the vector obtained from OpenAI
+                                            k: 5,
+                                            fields: 'DescriptionVector',
+                                        }
+                                    ]
+                                })
+                            })
+                                .then(response => response.json())
+                                .then(data => {
+                                    console.log(data)
+                                    const resultsDiv = document.getElementById('results');
+                                    const resultCount = data['@odata.count'];
+                                    resultsDiv.innerHTML = `<p>共有 ${resultCount} 筆結果:</p>`;
+
+                                    if (data.value) {
+                                        data.value.forEach(item => {
+                                            resultsDiv.innerHTML += `<p>${item.HotelName} - ${item.Description}</p>`;
+                                        });
+                                    }
+                                })
+                                .catch(error => {
+                                    console.error('發生錯誤:', error);
+                                });
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('OpenAI 發生錯誤:', error);
+                });
+        }
+    </script>
+</body>
+
+</html>
